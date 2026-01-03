@@ -2,12 +2,14 @@ use sha2::{Sha256, Digest};
 use std::fs::File;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::path::Path;
+use std::collections::HashMap;
+use rayon::prelude::*; // Import rayon parallel iterator
 
-/// Generates a fast SHA-256 hash by reading the first and last 5MB of a file.
-pub fn sha256_file_hash<P: AsRef<Path>>(file_path: P) -> io::Result<String> {
+pub fn sha256_file_hash(file_path: String) -> io::Result<String> {
     const CHUNK_SIZE: u64 = 5 * 1024 * 1024; // 5MB
 
-    let mut file = File::open(file_path)?;
+    let path = Path::new(&file_path);  // Convert String to Path
+    let mut file = File::open(path)?;  // Open the file using the Path
     let metadata = file.metadata()?;
     let file_size = metadata.len();
 
@@ -33,4 +35,21 @@ pub fn sha256_file_hash<P: AsRef<Path>>(file_path: P) -> io::Result<String> {
     // 3. Finalize hash and convert to hex string
     let result = hasher.finalize();
     Ok(format!("{:x}", result))
+}
+
+pub fn sha256_multiple_file_hashes(file_paths: Vec<String>) -> io::Result<HashMap<String, String>> {
+    let hashes: HashMap<String, String> = file_paths
+        .par_iter() // Parallelize the iteration over the file paths
+        .filter_map(|file_path| {
+            match sha256_file_hash(file_path.clone()) {
+                Ok(hash) => Some((file_path.clone(), hash)), // Collect result as tuple
+                Err(e) => {
+                    eprintln!("Failed to hash file {}: {}", file_path, e);
+                    None
+                }
+            }
+        })
+        .collect(); // Collect results into a HashMap
+
+    Ok(hashes)
 }

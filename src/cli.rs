@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "ova-rust", version = "0.1.0", about = "Video Engine")]
+#[command(name = "ovax", version = "0.1-beta", about = "Video Engine")]
 pub struct Cli {
     #[arg(short, long, global = true)]
     pub verbose: bool,
@@ -53,7 +53,8 @@ pub enum Commands {
     },
     Hash {
         /// Path to the video file
-        input: String,
+        #[arg(short, long)]
+        file: String,
     },
     Keyframes {
     #[arg(short, long, help = "Path to the input video file")]

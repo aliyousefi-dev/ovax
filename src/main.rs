@@ -9,8 +9,10 @@ mod filehash;
 use std::path::Path;
 use clap::Parser;
 use cli::{Cli, Commands};
-use std::time::Instant;
+use std::{fs, time::Instant};
 use std::io::{self, Write};
+use serde_json::Value;
+use encoding_rs::{WINDOWS_1252, UTF_16LE};
 
 fn main() {
     // Initialize FFmpeg
@@ -19,31 +21,38 @@ fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Scan { path,simple } => {
-        if !(*simple) {
-                let videos = scan::detail::collect_videos(path);
-                utils::print_json(&videos, cli.verbose);
-            } else {
-let videos = scan::videos::scanvideos(path);
+     Commands::Scan { path, simple } => {
+    if !(*simple) {
+        let videos = scan::detail::collect_videos(path);
+        utils::print_json(&videos, cli.verbose);
+    } else {
+        let videos = scan::videos::scanvideos(path);
 
-let stdout = io::stdout();
-let mut handle = io::BufWriter::new(stdout.lock()); // Lock and buffer
+            let json_output = serde_json::json!({
+        "files": videos
+    });
+    
+      // Serialize the video list as pretty JSON
+    match serde_json::to_string_pretty(&json_output) {
+        Ok(json_string) => {
+            let stdout = io::stdout();
+            let mut handle = io::BufWriter::new(stdout.lock()); // Lock and buffer
 
-for v in videos {
-    // We use writeln! instead of println!
-    // It writes to the buffer in memory instead of the screen
-    if let Err(e) = writeln!(handle, "{}", v.display()) {
-        eprintln!("Error writing to stdout: {}", e);
-        break;
+            // Write the JSON output to stdout
+            if let Err(e) = writeln!(handle, "{}", json_string) {
+                eprintln!("Error writing to stdout: {}", e);
+            }
+
+            // Ensure the buffer is flushed after writing
+            handle.flush().unwrap();
+        }
+        Err(e) => {
+            eprintln!("Error serializing JSON: {}", e);
+            std::process::exit(1);
+        }
+    }
     }
 }
-
-// The buffer automatically flushes when 'handle' goes out of scope, 
-// but you can do it manually too:
-handle.flush().unwrap();
-            }
-        }
-
         Commands::Thumb { input, output } => {
             let input_path = Path::new(input);
             let output_path = Path::new(output);
@@ -171,33 +180,50 @@ std::fs::write(output_path.join("sprite.json"), manifest_json).unwrap();
                 }
             }
         }
-        Commands::Hash { input } => {
-            let start = Instant::now();
-            let input_path = Path::new(input);
+ Commands::Hash { file } => {
+    let start = Instant::now();
 
-            // Using the function from your filehash module
-            match filehash::sha256_file_hash(input_path) {
-                Ok(hash_str) => {
-                    let duration = start.elapsed();
-                    let res = serde_json::json!({
-                        "status": "success",
-                        "hash": hash_str,
-                        "file": input,
-                        "elapsed_time_ms": duration.as_millis()
-                    });
-                    utils::print_json(&res, cli.verbose);
-                }
-                Err(e) => {
-                    let res = serde_json::json!({
-                        "status": "error",
-                        "message": format!("Failed to hash file: {}", e)
-                    });
-                    utils::print_json(&res, cli.verbose);
-                    std::process::exit(1);
-                }
-            }
+    // Read the raw bytes of the file (UTF-16LE encoded)
+    let file_content = fs::read(file).expect("Failed to read JSON file");
+
+    // Convert the UTF-16LE bytes to UTF-8
+    let (utf8_content, _, had_errors) = UTF_16LE.decode(&file_content);
+    if had_errors {
+        eprintln!("Warning: There were errors while decoding the UTF-16LE file.");
+    }
+
+    // Now we can safely parse the UTF-8 content as JSON
+    let files_json: Value = serde_json::from_str(&utf8_content).expect("Failed to parse JSON");
+
+    // Ensure "files" is an array of strings
+    let files = files_json["files"]
+        .as_array()
+        .expect("Expected 'files' to be an array of strings")
+        .iter()
+        .filter_map(|f| f.as_str().map(|s| s.to_string()))
+        .collect::<Vec<String>>();
+
+    // Using the new sha256_multiple_file_hashes function
+    match filehash::sha256_multiple_file_hashes(files) {
+        Ok(hashes) => {
+            let duration = start.elapsed();
+            let res = serde_json::json!({
+                "status": "success",
+                "hashes": hashes,
+                "elapsed_time_ms": duration.as_millis()
+            });
+            utils::print_json(&res, cli.verbose);
         }
-
+        Err(e) => {
+            let res = serde_json::json!({
+                "status": "error",
+                "message": format!("Failed to hash files: {}", e)
+            });
+            utils::print_json(&res, cli.verbose);
+            std::process::exit(1);
+        }
+    }
+}
         Commands::Clean => {
             println!("Cleaning up...");
         }
