@@ -2,7 +2,7 @@ use std::fs;
 use std::time::Instant;
 use serde_json::Value;
 use encoding_rs::UTF_16LE;
-use crate::filehash;
+use crate::checksum;
 use crate::utils;
 
 pub fn execute_hash(file: &str, verbose: bool) -> Result<(), String> {
@@ -29,7 +29,7 @@ pub fn execute_hash(file: &str, verbose: bool) -> Result<(), String> {
         .collect::<Vec<String>>();
 
     // Call the sha256_multiple_file_hashes function
-    match filehash::sha256_multiple_file_hashes(files) {
+    match checksum::sha256::sha256_multiple_file_hashes(files) {
         Ok(hashes) => {
             let duration = start.elapsed();
             let res = serde_json::json!({

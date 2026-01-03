@@ -4,7 +4,7 @@ mod cli;
 mod preview; 
 mod thumb;
 mod sprite;
-mod filehash;
+mod checksum;
 
 use clap::{Parser};
 use cli::handler::{Cli};
