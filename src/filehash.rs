@@ -37,12 +37,13 @@ pub fn sha256_file_hash(file_path: String) -> io::Result<String> {
     Ok(format!("{:x}", result))
 }
 
+
 pub fn sha256_multiple_file_hashes(file_paths: Vec<String>) -> io::Result<HashMap<String, String>> {
     let hashes: HashMap<String, String> = file_paths
         .par_iter() // Parallelize the iteration over the file paths
         .filter_map(|file_path| {
             match sha256_file_hash(file_path.clone()) {
-                Ok(hash) => Some((file_path.clone(), hash)), // Collect result as tuple
+                Ok(hash) => Some((hash, file_path.clone())), // Swap the order: hash first, file path second
                 Err(e) => {
                     eprintln!("Failed to hash file {}: {}", file_path, e);
                     None
