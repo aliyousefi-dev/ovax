@@ -36,7 +36,6 @@ pub enum Commands {
         #[arg(short, long, default_value_t = 5.0)]
         duration: f64,
     },
-
     Sprite {
         #[arg(short, long)]
         input: String,
@@ -59,7 +58,13 @@ pub enum Commands {
     Keyframes {
     #[arg(short, long, help = "Path to the input video file")]
     input: String,
-},
+    },
+    /// Connect to the Go gRPC server as a worker
+    Connect {
+        /// The address of the gRPC server
+        #[arg(short, long, default_value = "http://127.0.0.1:50051")]
+        server: String,
+    },
     /// Placeholder for other tasks
     Clean,
 }

@@ -1,2 +1,4 @@
 mod savejpg;
-pub mod frame;
+pub mod extractor;
+pub mod types;
+pub mod multithumb;

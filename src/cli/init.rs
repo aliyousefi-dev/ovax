@@ -5,6 +5,7 @@ use crate::cli::preview;
 use crate::cli::sprite;
 use crate::cli::hash;
 use crate::cli::keyframes;
+use crate::cli::worker;
 
 pub fn cli_handler(command: Commands, verbose: bool) {
     match command {
@@ -28,6 +29,7 @@ pub fn cli_handler(command: Commands, verbose: bool) {
                 eprintln!("Error in keyframes command: {}", e);
             }
         }
+        
         Commands::Sprite { input, output_dir, rows, cols, width, height } => {
             if let Err(e) = sprite::execute_sprite(&input, &output_dir, &rows, &cols, &width, &height, verbose) {
                 eprintln!("Error in sprite command: {}", e);
@@ -36,6 +38,13 @@ pub fn cli_handler(command: Commands, verbose: bool) {
         Commands::Hash { file } => {
             if let Err(e) = hash::execute_hash(&file, verbose) {
                 eprintln!("Error in hash command: {}", e);
+            }
+        }
+        Commands::Connect { server } => {
+            // Since execute_connect is async, we need a runtime to execute it
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            if let Err(e) = rt.block_on(worker::execute_connect(server)) {
+                eprintln!("gRPC Worker Error: {}", e);
             }
         }
         Commands::Clean => {

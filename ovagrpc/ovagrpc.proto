@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+// The package name creates a namespace for your messages
+package ovagrpc;
+
+option go_package = "ovacli/proto;ovaproto";
+
+// The service defines the "actions" your Go server and Rust worker can perform.
+service OvaService {
+  // Unary RPC: Rust asks for a job, Go sends one back.
+  rpc GetNextJob(WorkerInfo) returns (Job);
+
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+
+  rpc SayHello(HelloRequest) returns (HelloResponse);
+
+  // Server Streaming: Rust sends continuous progress updates to Go.
+  rpc StreamProgress(ProgressUpdate) returns (stream StreamResponse);
+}
+
+message HeartbeatRequest {
+  string worker_id = 1;
+  float cpu_usage = 2; // Useful for the dashboard
+  float ram_usage = 3; // Useful for the dashboard
+  int32 active_jobs = 4; // Tells Go how busy the worker is
+}
+
+message HeartbeatResponse {
+  bool status = 1; // Go can return 'false' if worker needs to restart
+}
+
+message HelloRequest {}
+
+message HelloResponse {
+  string message = 1;
+}
+
+// Data sent from the Rust worker to identify itself.
+message WorkerInfo {
+  string worker_id = 1;
+  string system_load = 2;
+}
+
+// Data sent from the Go server to tell Rust what to do.
+message Job {
+  string job_id = 1;
+  string video_path = 2;
+  string target_format = 3;
+}
+
+// Data for progress tracking.
+message ProgressUpdate {
+  string job_id = 1;
+  float percentage = 2;
+  int64 bytes_processed = 3;
+}
+
+// Simple confirmation message.
+message StreamResponse {
+  bool success = 1;
+  float progress = 2;
+}

@@ -5,4 +5,5 @@ pub mod preview;
 pub mod keyframes;
 pub mod sprite;
 pub mod hash;
+pub mod worker;
 pub mod init;

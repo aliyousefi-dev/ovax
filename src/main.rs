@@ -6,6 +6,10 @@ mod thumb;
 mod sprite;
 mod checksum;
 
+pub mod ovagrpc {
+    tonic::include_proto!("ovagrpc");
+}
+
 use clap::{Parser};
 use cli::handler::{Cli};
 use cli::init::cli_handler; // Import the cli_handler function
